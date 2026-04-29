@@ -1,0 +1,1272 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>amine.OS — Portfolio System</title>
+<meta name="description" content="amine.OS — un environnement portfolio interactif. Amine Assoussi, étudiant ingénieur cybersécurité." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@300;400;500;600&family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg-deep: #050507;
+    --bg: #0c0c10;
+    --bg-1: #14141a;
+    --bg-2: #1c1c24;
+    --bg-3: #25252f;
+    --line: rgba(255, 255, 255, 0.06);
+    --line-2: rgba(255, 255, 255, 0.12);
+    --line-3: rgba(255, 255, 255, 0.2);
+    --ink: #ededf0;
+    --ink-2: #c0c0c8;
+    --ink-3: #7e7e8a;
+    --ink-4: #4a4a55;
+    --plasma: #ff5e3a;
+    --void: #c5e8ff;
+    --void-glow: rgba(197, 232, 255, .5);
+    --signal: #b8ff5e;
+    --depth: 0 1px 0 rgba(255,255,255,.04) inset, 0 30px 60px -20px rgba(0,0,0,.7), 0 18px 36px -18px rgba(0,0,0,.6);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    font-family: 'Geist', -apple-system, sans-serif;
+    background: var(--bg-deep);
+    color: var(--ink);
+    line-height: 1.6;
+    font-size: 14px;
+    user-select: none;
+  }
+  .serif { font-family: 'Instrument Serif', serif; font-style: italic; font-weight: 400; }
+  .mono { font-family: 'Geist Mono', monospace; }
+  ::selection { background: var(--plasma); color: var(--bg); }
+
+  /* ============ BOOT SCREEN ============ */
+  .boot {
+    position: fixed; inset: 0; z-index: 10000; background: var(--bg-deep);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    transition: opacity .8s ease, visibility .8s ease;
+  }
+  .boot.done { opacity: 0; visibility: hidden; pointer-events: none; }
+  .boot-logo {
+    font-family: 'Instrument Serif', serif; font-style: italic;
+    font-size: clamp(3rem, 8vw, 6rem); letter-spacing: -.04em;
+    margin-bottom: 3rem; color: var(--ink);
+  }
+  .boot-logo span { color: var(--plasma); }
+  .boot-progress {
+    width: 240px; height: 1px; background: var(--line);
+    position: relative; overflow: hidden; margin-bottom: 2rem;
+  }
+  .boot-progress::before {
+    content: ''; position: absolute; top: 0; left: 0; height: 100%;
+    background: var(--plasma); animation: bootBar 2.5s ease forwards;
+  }
+  @keyframes bootBar { from { width: 0; } to { width: 100%; } }
+  .boot-log {
+    font-family: 'Geist Mono', monospace; font-size: .75rem;
+    color: var(--ink-3); height: 1.2em; min-width: 280px; text-align: center;
+  }
+  .boot-prompt {
+    margin-top: 4rem; font-family: 'Geist Mono', monospace; font-size: .75rem;
+    color: var(--ink-4); opacity: 0; animation: fadeIn .5s ease 2.6s forwards;
+  }
+  .boot-prompt span { color: var(--plasma); }
+  @keyframes fadeIn { to { opacity: 1; } }
+
+  /* ============ DESKTOP ============ */
+  .desktop {
+    position: relative; width: 100vw; height: 100vh;
+    background: var(--bg-deep); overflow: hidden;
+  }
+  .stars-canvas, .net-canvas {
+    position: absolute; inset: 0; pointer-events: none;
+  }
+  .vignette {
+    position: absolute; inset: 0; pointer-events: none;
+    background: radial-gradient(ellipse at center, transparent 0%, rgba(0,0,0,.6) 100%);
+  }
+  .scanlines {
+    position: absolute; inset: 0; pointer-events: none; opacity: .4;
+    background: repeating-linear-gradient(0deg, transparent 0, transparent 2px, rgba(0,0,0,.18) 3px, transparent 3px);
+    mix-blend-mode: overlay;
+  }
+
+  /* ============ MENU BAR ============ */
+  .menubar {
+    position: absolute; top: 0; left: 0; right: 0; height: 30px;
+    background: rgba(12, 12, 16, .6); backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--line);
+    display: flex; align-items: center; padding: 0 1rem;
+    font-family: 'Geist Mono', monospace; font-size: .72rem;
+    color: var(--ink-2); z-index: 1000; gap: 1.5rem;
+  }
+  .menu-logo { color: var(--plasma); font-weight: 500; }
+  .menu-item {
+    color: var(--ink-2); cursor: pointer; transition: color .2s;
+    padding: 4px 8px; border-radius: 4px;
+  }
+  .menu-item:hover { background: var(--line-2); color: var(--ink); }
+  .menu-spacer { flex: 1; }
+  .menu-status {
+    display: flex; align-items: center; gap: .5rem; color: var(--ink-3);
+  }
+  .menu-status .pulse {
+    width: 6px; height: 6px; border-radius: 50%; background: var(--signal);
+    box-shadow: 0 0 6px var(--signal); animation: pulseLive 2s infinite;
+  }
+  @keyframes pulseLive { 0%,100% {opacity: 1;} 50% {opacity: .4;} }
+  .menu-clock { color: var(--ink); }
+
+  /* ============ DESKTOP ICONS ============ */
+  .desktop-icon {
+    position: absolute; width: 76px; cursor: pointer; text-align: center;
+    transition: transform .15s ease;
+  }
+  .desktop-icon:hover { transform: scale(1.05); }
+  .desktop-icon.active .icon-frame { background: rgba(255, 94, 58, .15); border-color: var(--plasma); }
+  .icon-frame {
+    width: 56px; height: 56px; margin: 0 auto 6px; border-radius: 12px;
+    background: rgba(255, 255, 255, .04); border: 1px solid var(--line);
+    display: flex; align-items: center; justify-content: center;
+    transition: all .2s ease;
+  }
+  .icon-frame svg { width: 28px; height: 28px; }
+  .icon-label {
+    font-family: 'Geist Mono', monospace; font-size: .7rem;
+    color: var(--ink-2); padding: 2px 4px; border-radius: 3px;
+  }
+
+  /* ============ WINDOWS ============ */
+  .window {
+    position: absolute; min-width: 380px; min-height: 300px;
+    background: var(--bg-1); border: 1px solid var(--line-2);
+    border-radius: 12px; box-shadow: var(--depth);
+    display: flex; flex-direction: column; overflow: hidden;
+    opacity: 0; transform: scale(.92) translateY(10px);
+    transition: opacity .25s ease, transform .25s ease;
+    pointer-events: none;
+  }
+  .window.open { opacity: 1; transform: scale(1) translateY(0); pointer-events: auto; }
+  .window.minimized {
+    opacity: 0; transform: scale(.5) translateY(100vh); pointer-events: none;
+  }
+  .window-titlebar {
+    height: 36px; background: rgba(0,0,0,.2); border-bottom: 1px solid var(--line);
+    display: flex; align-items: center; padding: 0 12px; gap: 8px;
+    cursor: grab; user-select: none;
+  }
+  .window-titlebar:active { cursor: grabbing; }
+  .window-controls { display: flex; gap: 7px; }
+  .wc {
+    width: 12px; height: 12px; border-radius: 50%; cursor: pointer;
+    border: none; transition: filter .15s;
+  }
+  .wc.close { background: #ff5f56; }
+  .wc.min { background: #ffbd2e; }
+  .wc.max { background: #27c93f; }
+  .wc:hover { filter: brightness(1.2); }
+  .window-title {
+    font-family: 'Geist Mono', monospace; font-size: .72rem;
+    color: var(--ink-3); flex: 1; text-align: center;
+  }
+  .window-body {
+    flex: 1; overflow-y: auto; overflow-x: hidden;
+  }
+  .window-body::-webkit-scrollbar { width: 6px; }
+  .window-body::-webkit-scrollbar-track { background: transparent; }
+  .window-body::-webkit-scrollbar-thumb { background: var(--line-2); border-radius: 3px; }
+  .window-body::-webkit-scrollbar-thumb:hover { background: var(--line-3); }
+
+  /* ============ DOCK ============ */
+  .dock {
+    position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
+    background: rgba(20, 20, 26, .65); backdrop-filter: blur(28px);
+    -webkit-backdrop-filter: blur(28px);
+    border: 1px solid var(--line-2); border-radius: 18px;
+    padding: 8px 12px; display: flex; gap: 6px; align-items: end;
+    z-index: 999; box-shadow: var(--depth);
+  }
+  .dock-item {
+    width: 44px; height: 44px; border-radius: 10px;
+    background: rgba(255,255,255,.05); border: 1px solid var(--line);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: all .25s cubic-bezier(.34,1.56,.64,1);
+    position: relative;
+  }
+  .dock-item:hover { transform: translateY(-8px) scale(1.15); background: rgba(255, 94, 58, .15); border-color: var(--plasma); }
+  .dock-item.active::after {
+    content: ''; position: absolute; bottom: -7px; left: 50%; transform: translateX(-50%);
+    width: 4px; height: 4px; border-radius: 50%; background: var(--plasma);
+  }
+  .dock-item svg { width: 22px; height: 22px; }
+  .dock-tooltip {
+    position: absolute; bottom: 60px; padding: 4px 10px; background: var(--bg-2);
+    border: 1px solid var(--line-2); border-radius: 6px;
+    font-family: 'Geist Mono', monospace; font-size: .68rem; color: var(--ink);
+    white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity .15s;
+  }
+  .dock-item:hover .dock-tooltip { opacity: 1; }
+  .dock-divider { width: 1px; background: var(--line-2); margin: 6px 4px; }
+
+  /* ============ HUD ============ */
+  .hud {
+    position: absolute; top: 50px; right: 20px; z-index: 50;
+    background: rgba(20, 20, 26, .65); backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--line-2); border-radius: 12px;
+    padding: 16px; min-width: 240px;
+    font-family: 'Geist Mono', monospace; font-size: .72rem;
+  }
+  .hud-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 6px 0; border-bottom: 1px dashed var(--line);
+  }
+  .hud-row:last-child { border: none; }
+  .hud-label { color: var(--ink-3); }
+  .hud-value { color: var(--ink); }
+  .hud-value.live { color: var(--signal); }
+  .hud-value.warn { color: var(--plasma); }
+  .hud-bar {
+    width: 60px; height: 4px; background: var(--line); border-radius: 2px;
+    overflow: hidden; display: inline-block; vertical-align: middle;
+    margin-left: 8px;
+  }
+  .hud-bar-fill {
+    height: 100%; background: var(--plasma);
+    transition: width .8s ease;
+  }
+  .hud-title {
+    font-size: .65rem; color: var(--ink-4); text-transform: uppercase;
+    letter-spacing: .2em; margin-bottom: 10px;
+  }
+  @media (max-width: 900px) { .hud { display: none; } }
+
+  /* ============ CONTENT STYLES ============ */
+  .panel { padding: 24px 28px; }
+  .panel-row {
+    display: flex; gap: 24px; align-items: start;
+  }
+  .panel-section { padding: 20px 28px; border-bottom: 1px solid var(--line); }
+  .panel-section:last-child { border-bottom: none; }
+
+  .display-h {
+    font-family: 'Instrument Serif', serif; font-style: italic;
+    font-size: clamp(2.4rem, 4vw, 3.4rem); line-height: 1; letter-spacing: -.03em;
+    margin-bottom: .5rem; font-weight: 400;
+  }
+  .display-h .accent { color: var(--plasma); }
+  .meta-line {
+    font-family: 'Geist Mono', monospace; font-size: .7rem;
+    color: var(--ink-3); text-transform: uppercase; letter-spacing: .15em;
+    display: flex; align-items: center; gap: .75rem; margin-bottom: 1.5rem;
+  }
+  .meta-line::before {
+    content: ''; width: 24px; height: 1px; background: var(--plasma);
+  }
+  .body-text { color: var(--ink-2); line-height: 1.7; margin-bottom: 1rem; }
+  .body-text strong { color: var(--plasma); font-weight: 400; }
+  .lead {
+    font-family: 'Instrument Serif', serif; font-style: italic;
+    font-size: 1.4rem; color: var(--ink); line-height: 1.4;
+    margin-bottom: 1.5rem;
+  }
+
+  /* avatar */
+  .avatar-block {
+    width: 100px; height: 100px; border-radius: 50%; flex-shrink: 0;
+    background: radial-gradient(circle at 30% 30%, var(--plasma), #8c2818 80%);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Instrument Serif', serif; font-style: italic;
+    font-size: 2.4rem; color: var(--bg);
+    box-shadow: 0 0 40px rgba(255, 94, 58, .3);
+    position: relative;
+  }
+  .avatar-block::after {
+    content: ''; position: absolute; inset: -4px; border-radius: 50%;
+    border: 1px solid var(--plasma); opacity: .4;
+    animation: ringPulse 2.5s ease-in-out infinite;
+  }
+  @keyframes ringPulse {
+    0%, 100% { transform: scale(1); opacity: .4; }
+    50% { transform: scale(1.08); opacity: 0; }
+  }
+
+  .pill-row { display: flex; flex-wrap: wrap; gap: 6px; }
+  .pill {
+    padding: 4px 10px; background: rgba(255,255,255,.04); border: 1px solid var(--line);
+    border-radius: 100px; font-family: 'Geist Mono', monospace;
+    font-size: .68rem; color: var(--ink-2); transition: all .2s;
+  }
+  .pill:hover { border-color: var(--plasma); color: var(--plasma); }
+  .pill.live {
+    background: rgba(184, 255, 94, .08); border-color: rgba(184, 255, 94, .4);
+    color: var(--signal);
+  }
+
+  .data-table { width: 100%; font-family: 'Geist Mono', monospace; font-size: .78rem; }
+  .data-table tr { border-bottom: 1px solid var(--line); }
+  .data-table tr:last-child { border: none; }
+  .data-table td { padding: 8px 0; vertical-align: top; }
+  .data-table td:first-child { color: var(--ink-3); width: 110px; }
+  .data-table td:last-child { color: var(--ink); }
+  .data-table td .accent { color: var(--plasma); }
+  .data-table td .live { color: var(--signal); }
+
+  /* Skill matrix */
+  .matrix {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+    padding: 24px 28px;
+  }
+  .matrix-cell {
+    background: var(--bg-2); border: 1px solid var(--line); border-radius: 8px;
+    padding: 14px 16px;
+  }
+  .matrix-cell h4 {
+    font-family: 'Geist Mono', monospace; font-size: .7rem;
+    color: var(--ink-3); text-transform: uppercase; letter-spacing: .15em;
+    margin-bottom: 12px; font-weight: 400;
+    display: flex; justify-content: space-between;
+  }
+  .matrix-cell h4 .ic { color: var(--plasma); }
+  .matrix-cell .pill-row { gap: 5px; }
+
+  /* Cert grid */
+  .cert-grid { padding: 24px 28px; display: grid; gap: 10px; }
+  .cert-row {
+    display: grid; grid-template-columns: auto 1fr auto;
+    gap: 14px; align-items: center; padding: 10px 14px;
+    background: var(--bg-2); border: 1px solid var(--line);
+    border-radius: 8px; transition: all .25s;
+  }
+  .cert-row:hover { border-color: var(--plasma); transform: translateX(4px); }
+  .cert-num {
+    font-family: 'Geist Mono', monospace; font-size: .68rem;
+    color: var(--ink-4); width: 28px;
+  }
+  .cert-info h5 {
+    font-size: .9rem; font-weight: 500; color: var(--ink); margin-bottom: 2px;
+  }
+  .cert-info p {
+    font-family: 'Geist Mono', monospace; font-size: .65rem;
+    color: var(--ink-3); text-transform: uppercase; letter-spacing: .12em;
+  }
+  .cert-badge {
+    font-family: 'Geist Mono', monospace; font-size: .65rem;
+    padding: 4px 10px; border-radius: 100px; white-space: nowrap;
+  }
+  .cert-badge.ok { background: rgba(184, 255, 94, .1); color: var(--signal); border: 1px solid rgba(184, 255, 94, .3); }
+  .cert-badge.run { background: rgba(255, 94, 58, .1); color: var(--plasma); border: 1px solid rgba(255, 94, 58, .3); }
+
+  /* Project list */
+  .proj-stack { padding: 24px 28px; display: grid; gap: 14px; }
+  .proj-block {
+    background: var(--bg-2); border: 1px solid var(--line); border-radius: 10px;
+    padding: 16px 18px; transition: all .25s; cursor: pointer;
+    position: relative; overflow: hidden;
+  }
+  .proj-block:hover { border-color: var(--plasma); transform: translateY(-2px); }
+  .proj-block::before {
+    content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 2px;
+    background: var(--plasma); transform: scaleY(0); transform-origin: top;
+    transition: transform .35s;
+  }
+  .proj-block:hover::before { transform: scaleY(1); }
+  .proj-head {
+    display: flex; justify-content: space-between; align-items: start;
+    margin-bottom: 6px; gap: 12px;
+  }
+  .proj-head h4 { font-size: 1.05rem; font-weight: 500; color: var(--ink); }
+  .proj-head .when {
+    font-family: 'Geist Mono', monospace; font-size: .68rem;
+    color: var(--ink-4); white-space: nowrap;
+  }
+  .proj-block p {
+    font-size: .82rem; color: var(--ink-2); line-height: 1.7; margin-bottom: 10px;
+  }
+  .proj-tech { font-family: 'Geist Mono', monospace; font-size: .68rem; color: var(--ink-3); }
+  .proj-tech .sep { color: var(--ink-4); margin: 0 6px; }
+
+  /* Timeline */
+  .tl { padding: 24px 28px; }
+  .tl-entry {
+    display: grid; grid-template-columns: 90px 1fr; gap: 16px;
+    padding: 14px 0; border-bottom: 1px solid var(--line);
+    transition: padding-left .2s;
+  }
+  .tl-entry:hover { padding-left: 8px; }
+  .tl-entry:last-child { border: none; }
+  .tl-when {
+    font-family: 'Geist Mono', monospace; font-size: .68rem;
+    color: var(--plasma); padding-top: 3px;
+  }
+  .tl-content h5 { font-size: .92rem; font-weight: 500; margin-bottom: 2px; }
+  .tl-content .org {
+    font-family: 'Geist Mono', monospace; font-size: .68rem;
+    color: var(--ink-3); margin-bottom: 6px;
+  }
+  .tl-content p { font-size: .8rem; color: var(--ink-2); line-height: 1.65; }
+
+  /* Contact */
+  .contact-block { padding: 28px; }
+  .contact-row {
+    display: grid; grid-template-columns: auto 1fr auto;
+    gap: 16px; align-items: center; padding: 14px 16px;
+    background: var(--bg-2); border: 1px solid var(--line);
+    border-radius: 10px; margin-bottom: 8px;
+    text-decoration: none; color: var(--ink); cursor: pointer;
+    transition: all .25s;
+  }
+  .contact-row:hover {
+    border-color: var(--plasma); background: rgba(255, 94, 58, .04);
+    transform: translateX(4px);
+  }
+  .contact-row svg { width: 18px; height: 18px; color: var(--ink-3); }
+  .contact-row:hover svg { color: var(--plasma); }
+  .contact-row .lbl {
+    font-family: 'Geist Mono', monospace; font-size: .65rem;
+    color: var(--ink-3); text-transform: uppercase; letter-spacing: .15em;
+    margin-bottom: 2px;
+  }
+  .contact-row .val { font-size: .9rem; color: var(--ink); }
+  .contact-row .arr { color: var(--ink-3); transition: transform .2s; }
+  .contact-row:hover .arr { color: var(--plasma); transform: translateX(4px); }
+
+  /* form */
+  .form-stack { padding: 24px 28px 28px; display: grid; gap: 14px; }
+  .form-stack label {
+    font-family: 'Geist Mono', monospace; font-size: .65rem;
+    color: var(--plasma); text-transform: uppercase; letter-spacing: .15em;
+    margin-bottom: 4px; display: block;
+  }
+  .form-stack input, .form-stack textarea {
+    width: 100%; padding: 10px 12px; background: var(--bg-2);
+    border: 1px solid var(--line); border-radius: 6px;
+    color: var(--ink); font-family: inherit; font-size: .88rem;
+    transition: border-color .2s;
+  }
+  .form-stack input:focus, .form-stack textarea:focus {
+    outline: none; border-color: var(--plasma);
+  }
+  .form-stack textarea { resize: vertical; min-height: 90px; }
+  .send-btn {
+    padding: 11px 18px; background: var(--plasma); color: var(--bg);
+    border: none; border-radius: 6px; cursor: pointer;
+    font-family: 'Geist Mono', monospace; font-size: .78rem;
+    font-weight: 500; transition: all .2s; width: 100%;
+  }
+  .send-btn:hover { filter: brightness(1.15); transform: translateY(-1px); }
+
+  /* Mobile fallback */
+  .mobile-notice { display: none; }
+  @media (max-width: 700px) {
+    .desktop, .menubar, .dock, .hud, .desktop-icon { display: none; }
+    .mobile-notice {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      min-height: 100vh; padding: 2rem; text-align: center;
+    }
+    .mobile-notice h1 {
+      font-family: 'Instrument Serif', serif; font-style: italic;
+      font-size: 2.5rem; margin-bottom: 1rem;
+    }
+    .mobile-notice h1 span { color: var(--plasma); }
+    .mobile-notice p { color: var(--ink-2); max-width: 320px; margin-bottom: 2rem; }
+    .mobile-notice a { color: var(--plasma); text-decoration: underline; font-family: 'Geist Mono', monospace; font-size: .85rem; }
+    body { overflow: auto; user-select: text; }
+    html, body { height: auto; }
+  }
+
+  .focus-glow.window {
+    border-color: var(--line-3);
+    box-shadow: 0 0 0 1px rgba(255, 94, 58, .15), var(--depth);
+  }
+</style>
+</head>
+<body>
+
+<div class="boot" id="boot">
+  <div class="boot-logo">amine<span>.OS</span></div>
+  <div class="boot-progress"></div>
+  <div class="boot-log mono" id="boot-log">[ boot ] initializing kernel...</div>
+  <div class="boot-prompt mono">press <span>any key</span> to enter</div>
+</div>
+
+<div class="mobile-notice">
+  <h1>amine<span>.OS</span></h1>
+  <p>This portfolio runs as a desktop environment and works best on a larger screen. Open it on a laptop or tablet for the full experience.</p>
+  <a href="mailto:amineassoussipro@gmail.com">amineassoussipro@gmail.com</a>
+</div>
+
+<div class="desktop" id="desktop">
+
+  <canvas class="net-canvas" id="net-canvas"></canvas>
+  <div class="vignette"></div>
+  <div class="scanlines"></div>
+
+  <div class="menubar">
+    <span class="menu-logo">◆ amine.OS</span>
+    <span class="menu-item" data-open="about">about</span>
+    <span class="menu-item" data-open="skills">skills</span>
+    <span class="menu-item" data-open="certs">certs</span>
+    <span class="menu-item" data-open="projects">projects</span>
+    <span class="menu-item" data-open="path">path</span>
+    <span class="menu-item" data-open="contact">contact</span>
+    <span class="menu-spacer"></span>
+    <span class="menu-status">
+      <span class="pulse"></span><span>online</span>
+    </span>
+    <span class="menu-clock" id="clock">--:--</span>
+  </div>
+
+  <div class="hud" id="hud">
+    <div class="hud-title">// system_status</div>
+    <div class="hud-row">
+      <span class="hud-label">availability</span>
+      <span class="hud-value live">● sept. 2026</span>
+    </div>
+    <div class="hud-row">
+      <span class="hud-label">contract</span>
+      <span class="hud-value">apprenticeship</span>
+    </div>
+    <div class="hud-row">
+      <span class="hud-label">duration</span>
+      <span class="hud-value">12 — 36 mo</span>
+    </div>
+    <div class="hud-row">
+      <span class="hud-label">location</span>
+      <span class="hud-value">angers · FR</span>
+    </div>
+    <div class="hud-row">
+      <span class="hud-label">mobility</span>
+      <span class="hud-value">national</span>
+    </div>
+    <div class="hud-row">
+      <span class="hud-label">load</span>
+      <span class="hud-value mono"><span id="cpu">38</span>%<span class="hud-bar"><span class="hud-bar-fill" id="cpu-bar" style="width:38%"></span></span></span>
+    </div>
+    <div class="hud-row">
+      <span class="hud-label">uptime</span>
+      <span class="hud-value mono" id="uptime">00:00:00</span>
+    </div>
+  </div>
+
+  <div class="desktop-icon" data-open="readme" style="top: 60px; left: 30px;">
+    <div class="icon-frame">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color: var(--void);">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/>
+      </svg>
+    </div>
+    <div class="icon-label">README.md</div>
+  </div>
+  <div class="desktop-icon" data-open="cv" style="top: 60px; left: 130px;">
+    <div class="icon-frame">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color: var(--plasma);">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+      </svg>
+    </div>
+    <div class="icon-label">cv.pdf</div>
+  </div>
+  <div class="desktop-icon" data-open="vault" style="top: 60px; left: 230px;">
+    <div class="icon-frame">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color: var(--signal);">
+        <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+      </svg>
+    </div>
+    <div class="icon-label">vault</div>
+  </div>
+
+  <div class="window" id="win-readme" style="width: 540px; height: 460px; top: 80px; left: 50%; transform: translateX(-50%) scale(.92);">
+    <div class="window-titlebar" data-drag>
+      <div class="window-controls">
+        <button class="wc close" data-close></button>
+        <button class="wc min" data-min></button>
+        <button class="wc max" data-max></button>
+      </div>
+      <div class="window-title mono">~/readme.md — welcome</div>
+      <div style="width: 56px;"></div>
+    </div>
+    <div class="window-body">
+      <div class="panel">
+        <div class="meta-line mono">welcome.txt — last opened: now</div>
+        <h1 class="display-h">Hello, I'm <span class="accent serif">Amine.</span></h1>
+        <p class="lead">A cybersecurity engineering student with five years of dev background and zero patience for boring portfolios.</p>
+        <p class="body-text">This isn't a website. It's a <strong>system</strong>. Click around — the dock, the desktop icons, the menu bar — every window is a part of who I am.</p>
+        <p class="body-text mono" style="font-size: .8rem; color: var(--ink-3);"><span style="color: var(--signal);">→</span> start by opening <span style="color: var(--plasma);">about</span> or just double-click around.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="window" id="win-about" style="width: 580px; height: 540px; top: 100px; left: 80px;">
+    <div class="window-titlebar" data-drag>
+      <div class="window-controls">
+        <button class="wc close" data-close></button>
+        <button class="wc min" data-min></button>
+        <button class="wc max" data-max></button>
+      </div>
+      <div class="window-title mono">~/about — profile.json</div>
+      <div style="width: 56px;"></div>
+    </div>
+    <div class="window-body">
+      <div class="panel">
+        <div class="meta-line mono">/01 — identity</div>
+        <div class="panel-row" style="margin-bottom: 24px;">
+          <div class="avatar-block">A</div>
+          <div>
+            <h1 class="display-h" style="font-size: 2.4rem;">Amine <span class="serif accent">Assoussi</span></h1>
+            <p class="mono" style="font-size: .78rem; color: var(--ink-3); margin-top: 4px;">cybersecurity engineering student · ESAIP angers · 23</p>
+          </div>
+        </div>
+        <p class="body-text">Five years building things, two years selling them, now learning to <strong>break into them — legally</strong>. My path crosses two worlds rarely combined: a Moroccan technical foundation (technical degree in dev, then bachelor's in computer systems engineering) and several years of high-stakes commercial work — banking advisory, insurance contracts, project coordination.</p>
+        <p class="body-text">This double track is why <strong>cybersecurity</strong> fits. The technical rigor I learned in code, the situational awareness I learned on the floor — both feed into reading systems, threats, and people. I'm investing now in real certifications (ISC2 CC, EC-Council CEH, Cisco CCNA) and concrete projects in networking, systems, and offensive security.</p>
+        <p class="body-text">Looking for an apprenticeship that takes me seriously and pushes me technically. Quality of work over noise.</p>
+      </div>
+      <div class="panel-section">
+        <div class="meta-line mono">/02 — fingerprint</div>
+        <table class="data-table">
+          <tr><td>name</td><td>amine assoussi</td></tr>
+          <tr><td>school</td><td>ESAIP angers — eng. cycle</td></tr>
+          <tr><td>focus</td><td><span class="accent">cybersecurity · systems · networks</span></td></tr>
+          <tr><td>languages</td><td>fr (C2) · ar (native) · en (B2-C1) · de (A1)</td></tr>
+          <tr><td>availability</td><td><span class="live">september 2026</span></td></tr>
+          <tr><td>permit</td><td>B · mobile across france</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="window" id="win-skills" style="width: 640px; height: 480px; top: 120px; left: 200px;">
+    <div class="window-titlebar" data-drag>
+      <div class="window-controls">
+        <button class="wc close" data-close></button>
+        <button class="wc min" data-min></button>
+        <button class="wc max" data-max></button>
+      </div>
+      <div class="window-title mono">~/skills — stack.matrix</div>
+      <div style="width: 56px;"></div>
+    </div>
+    <div class="window-body">
+      <div class="panel" style="padding-bottom: 8px;">
+        <div class="meta-line mono">/03 — competence_matrix</div>
+        <h2 class="display-h" style="font-size: 2rem;">The toolbox.</h2>
+      </div>
+      <div class="matrix">
+        <div class="matrix-cell">
+          <h4>// languages <span class="ic">/9</span></h4>
+          <div class="pill-row">
+            <span class="pill">Python</span><span class="pill">C</span><span class="pill">C#</span>
+            <span class="pill">Dart</span><span class="pill">JavaScript</span><span class="pill">HTML</span>
+            <span class="pill">CSS</span><span class="pill">SQL</span><span class="pill">LaTeX</span>
+          </div>
+        </div>
+        <div class="matrix-cell">
+          <h4>// offensive sec <span class="ic">/5</span></h4>
+          <div class="pill-row">
+            <span class="pill">Kali Linux</span><span class="pill">Nmap</span>
+            <span class="pill">Wireshark</span><span class="pill">Burp Suite</span>
+            <span class="pill">Metasploit</span>
+          </div>
+        </div>
+        <div class="matrix-cell">
+          <h4>// systems &amp; net <span class="ic">/6</span></h4>
+          <div class="pill-row">
+            <span class="pill">Linux</span><span class="pill">Win Server</span>
+            <span class="pill">AD</span><span class="pill">TCP/IP</span>
+            <span class="pill">LAN/WAN</span><span class="pill">Git</span>
+          </div>
+        </div>
+        <div class="matrix-cell">
+          <h4>// frameworks <span class="ic">/4</span></h4>
+          <div class="pill-row">
+            <span class="pill">Flutter</span><span class="pill">Riverpod</span>
+            <span class="pill">Supabase</span><span class="pill">Hive</span>
+          </div>
+        </div>
+        <div class="matrix-cell">
+          <h4>// soft skills <span class="ic">/5</span></h4>
+          <div class="pill-row">
+            <span class="pill live">responsibility</span>
+            <span class="pill live">autonomy</span>
+            <span class="pill live">adaptability</span>
+            <span class="pill live">teamwork</span>
+            <span class="pill live">project mgmt</span>
+          </div>
+        </div>
+        <div class="matrix-cell">
+          <h4>// office <span class="ic">/3</span></h4>
+          <div class="pill-row">
+            <span class="pill">MS Office</span>
+            <span class="pill">LaTeX</span>
+            <span class="pill">Notion</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="window" id="win-certs" style="width: 540px; height: 540px; top: 80px; left: 280px;">
+    <div class="window-titlebar" data-drag>
+      <div class="window-controls">
+        <button class="wc close" data-close></button>
+        <button class="wc min" data-min></button>
+        <button class="wc max" data-max></button>
+      </div>
+      <div class="window-title mono">~/certs — credentials.list</div>
+      <div style="width: 56px;"></div>
+    </div>
+    <div class="window-body">
+      <div class="panel" style="padding-bottom: 8px;">
+        <div class="meta-line mono">/04 — verified_credentials</div>
+        <h2 class="display-h" style="font-size: 2rem;">Earned. Earning.</h2>
+      </div>
+      <div class="cert-grid">
+        <div class="cert-row">
+          <span class="cert-num">/01</span>
+          <div class="cert-info"><h5>Certified in Cybersecurity</h5><p>ISC2 · 2025</p></div>
+          <span class="cert-badge ok">● earned</span>
+        </div>
+        <div class="cert-row">
+          <span class="cert-num">/02</span>
+          <div class="cert-info"><h5>Certified Ethical Hacker</h5><p>EC-Council · 2026</p></div>
+          <span class="cert-badge run">◐ in progress</span>
+        </div>
+        <div class="cert-row">
+          <span class="cert-num">/03</span>
+          <div class="cert-info"><h5>CCNA · Network Associate</h5><p>Cisco · 2026</p></div>
+          <span class="cert-badge run">◐ in progress</span>
+        </div>
+        <div class="cert-row">
+          <span class="cert-num">/04</span>
+          <div class="cert-info"><h5>SecNumAcadémie · MOOC</h5><p>ANSSI</p></div>
+          <span class="cert-badge ok">● earned</span>
+        </div>
+        <div class="cert-row">
+          <span class="cert-num">/05</span>
+          <div class="cert-info"><h5>Pre Security Path</h5><p>TryHackMe</p></div>
+          <span class="cert-badge ok">● earned</span>
+        </div>
+        <div class="cert-row">
+          <span class="cert-num">/06</span>
+          <div class="cert-info"><h5>Introduction to IoT</h5><p>Cisco</p></div>
+          <span class="cert-badge ok">● earned</span>
+        </div>
+        <div class="cert-row">
+          <span class="cert-num">/07</span>
+          <div class="cert-info"><h5>AI Starter Kit</h5><p>ALX Academy</p></div>
+          <span class="cert-badge ok">● earned</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="window" id="win-projects" style="width: 600px; height: 560px; top: 90px; left: 220px;">
+    <div class="window-titlebar" data-drag>
+      <div class="window-controls">
+        <button class="wc close" data-close></button>
+        <button class="wc min" data-min></button>
+        <button class="wc max" data-max></button>
+      </div>
+      <div class="window-title mono">~/projects — built.log</div>
+      <div style="width: 56px;"></div>
+    </div>
+    <div class="window-body">
+      <div class="panel" style="padding-bottom: 8px;">
+        <div class="meta-line mono">/05 — what_i_built</div>
+        <h2 class="display-h" style="font-size: 2rem;">Real code, not <span class="serif accent">templates.</span></h2>
+      </div>
+      <div class="proj-stack">
+        <div class="proj-block">
+          <div class="proj-head">
+            <h4>GymBro <span class="mono" style="color: var(--plasma); font-size: .68rem; margin-left: 6px;">// flutter app</span></h4>
+            <span class="when">2025 · personal</span>
+          </div>
+          <p>Cross-platform mobile app for workout duos. Two partners track sessions together, compare performance live, and challenge each other through weekly contests (beat your PR, push past your reps). Includes weekly progression photo tracking, exercise execution videos, personal record tracking, and a leaderboard. State managed with Riverpod, local persistence via Hive, Supabase backend.</p>
+          <div class="proj-tech">Flutter <span class="sep">·</span> Dart <span class="sep">·</span> Supabase <span class="sep">·</span> Riverpod <span class="sep">·</span> Hive</div>
+        </div>
+        <div class="proj-block">
+          <div class="proj-head">
+            <h4>SafeSync <span class="mono" style="color: var(--plasma); font-size: .68rem; margin-left: 6px;">// network sync</span></h4>
+            <span class="when">2025 · ESAIP</span>
+          </div>
+          <p>Secure local-network file synchronization. Client-server architecture in C and Python, TCP/IP socket communication, automated transfers, version conflict resolution. Designed to run autonomously on internal networks — no cloud dependency.</p>
+          <div class="proj-tech">C <span class="sep">·</span> Python <span class="sep">·</span> TCP/IP <span class="sep">·</span> Sockets <span class="sep">·</span> Linux</div>
+        </div>
+        <div class="proj-block">
+          <div class="proj-head">
+            <h4>HR-Tracker <span class="mono" style="color: var(--plasma); font-size: .68rem; margin-left: 6px;">// full-stack web</span></h4>
+            <span class="when">2021 · internship</span>
+          </div>
+          <p>Web app for employee attendance management — clocking in/out, absence/leave tracking, role-based authentication, admin dashboard. Built during a one-month internship at the Moroccan Ministry of National Education.</p>
+          <div class="proj-tech">HTML5 <span class="sep">·</span> CSS3 <span class="sep">·</span> JavaScript <span class="sep">·</span> SQL Server <span class="sep">·</span> MySQL</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="window" id="win-path" style="width: 580px; height: 580px; top: 70px; left: 320px;">
+    <div class="window-titlebar" data-drag>
+      <div class="window-controls">
+        <button class="wc close" data-close></button>
+        <button class="wc min" data-min></button>
+        <button class="wc max" data-max></button>
+      </div>
+      <div class="window-title mono">~/path — career.timeline</div>
+      <div style="width: 56px;"></div>
+    </div>
+    <div class="window-body">
+      <div class="panel" style="padding-bottom: 8px;">
+        <div class="meta-line mono">/06 — trajectory</div>
+        <h2 class="display-h" style="font-size: 2rem;">From floor to <span class="serif accent">framework.</span></h2>
+        <p class="body-text" style="font-size: .9rem;">Five jobs, three schools, two countries.</p>
+      </div>
+      <div class="tl">
+        <div class="tl-entry">
+          <div class="tl-when">2025 — 26</div>
+          <div class="tl-content"><h5>Server · Del Arte</h5><div class="org">angers · part-time</div><p>Customer service in a high-flow restaurant. Student work alongside studies.</p></div>
+        </div>
+        <div class="tl-entry">
+          <div class="tl-when">2023 — 25</div>
+          <div class="tl-content"><h5>Insurance Account Manager · AXA Maroc</h5><div class="org">rabat · full-time · 2 years</div><p>Contract management, client needs analysis, multichannel relations. Among the top sellers — 100+ subscriptions per month.</p></div>
+        </div>
+        <div class="tl-entry">
+          <div class="tl-when">2022 — 23</div>
+          <div class="tl-content"><h5>Client Advisor · Found Ever</h5><div class="org">rabat · full-time · 1 year</div><p>Credit case management, client data analysis, financial advisory. Strict data confidentiality protocols.</p></div>
+        </div>
+        <div class="tl-entry">
+          <div class="tl-when">2021 — 22</div>
+          <div class="tl-content"><h5>Project Coordinator · One Field</h5><div class="org">rabat · full-time</div><p>Planning, project coordination, intervention follow-up, scheduling and reporting to field teams.</p></div>
+        </div>
+        <div class="tl-entry">
+          <div class="tl-when">2021</div>
+          <div class="tl-content"><h5>Full-Stack Dev Intern · Min. of Education</h5><div class="org">rabat · 1 month</div><p>Built an internal HR web app: time tracking, absences, leaves. Auth + role management.</p></div>
+        </div>
+        <div class="tl-entry">
+          <div class="tl-when">2025 →</div>
+          <div class="tl-content"><h5>ESAIP · Engineering Cycle</h5><div class="org">angers · digital track · cybersecurity focus</div><p>Programming, web/mobile, Linux/Windows admin, networks, IS security.</p></div>
+        </div>
+        <div class="tl-entry">
+          <div class="tl-when">2021 — 22</div>
+          <div class="tl-content"><h5>ENSAK · Bachelor's CS Engineering</h5><div class="org">kénitra, morocco</div><p>Web client/server, OOP, mobile, SQL, database admin.</p></div>
+        </div>
+        <div class="tl-entry">
+          <div class="tl-when">2019 — 21</div>
+          <div class="tl-content"><h5>ISTA · Technical Degree, Dev</h5><div class="org">rabat, morocco</div><p>Specialized Technician Diploma. Foundations: algo, dev, databases.</p></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="window" id="win-contact" style="width: 540px; height: 580px; top: 100px; left: 260px;">
+    <div class="window-titlebar" data-drag>
+      <div class="window-controls">
+        <button class="wc close" data-close></button>
+        <button class="wc min" data-min></button>
+        <button class="wc max" data-max></button>
+      </div>
+      <div class="window-title mono">~/contact — open.channel</div>
+      <div style="width: 56px;"></div>
+    </div>
+    <div class="window-body">
+      <div class="panel" style="padding-bottom: 8px;">
+        <div class="meta-line mono">/07 — open_channel</div>
+        <h2 class="display-h" style="font-size: 2rem;">Let's <span class="serif accent">talk.</span></h2>
+        <p class="body-text" style="font-size: .88rem;">Recruiter, cyber team lead, or just curious. I read everything.</p>
+      </div>
+      <div class="contact-block" style="padding-top: 8px;">
+        <a class="contact-row" href="mailto:amineassoussipro@gmail.com">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 7l10 6 10-6"/></svg>
+          <div><div class="lbl">email</div><div class="val">amineassoussipro@gmail.com</div></div>
+          <span class="arr">→</span>
+        </a>
+        <a class="contact-row" href="tel:+33768540701">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+          <div><div class="lbl">phone</div><div class="val">+33 7 68 54 07 01</div></div>
+          <span class="arr">→</span>
+        </a>
+        <a class="contact-row" href="https://www.linkedin.com/in/amine-assoussi/" target="_blank">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-4 0v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
+          <div><div class="lbl">linkedin</div><div class="val">/amine-assoussi</div></div>
+          <span class="arr">→</span>
+        </a>
+        <a class="contact-row" href="https://github.com/Amxxne" target="_blank">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+          <div><div class="lbl">github</div><div class="val">/Amxxne</div></div>
+          <span class="arr">→</span>
+        </a>
+      </div>
+      <form class="form-stack" id="contact-form" style="padding-top: 0;">
+        <div><label>// name</label><input id="f-name" type="text" required /></div>
+        <div><label>// email</label><input id="f-email" type="email" required /></div>
+        <div><label>// message</label><textarea id="f-msg" required></textarea></div>
+        <button type="submit" class="send-btn">→ send transmission</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="window" id="win-vault" style="width: 460px; height: 360px; top: 130px; left: 340px;">
+    <div class="window-titlebar" data-drag>
+      <div class="window-controls">
+        <button class="wc close" data-close></button>
+        <button class="wc min" data-min></button>
+        <button class="wc max" data-max></button>
+      </div>
+      <div class="window-title mono">~/vault — encrypted</div>
+      <div style="width: 56px;"></div>
+    </div>
+    <div class="window-body">
+      <div class="panel">
+        <div class="meta-line mono">/secret — access denied</div>
+        <h2 class="display-h" style="font-size: 1.8rem;">vault is <span class="serif accent">locked.</span></h2>
+        <p class="body-text" style="font-size: .85rem;">This window is intentionally empty. The interesting stuff is hidden in plain sight elsewhere on this OS.</p>
+        <p class="body-text mono" style="font-size: .75rem; color: var(--ink-3);"><span style="color: var(--signal);">hint:</span> try the konami code · ↑ ↑ ↓ ↓ ← → ← → b a</p>
+        <div id="vault-output" style="margin-top: 16px; padding: 12px; background: var(--bg-2); border: 1px solid var(--line); border-radius: 6px; font-family: 'Geist Mono', monospace; font-size: .75rem; color: var(--ink-3); min-height: 40px;">awaiting input...</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="window" id="win-cv" style="width: 480px; height: 280px; top: 180px; left: 380px;">
+    <div class="window-titlebar" data-drag>
+      <div class="window-controls">
+        <button class="wc close" data-close></button>
+        <button class="wc min" data-min></button>
+        <button class="wc max" data-max></button>
+      </div>
+      <div class="window-title mono">~/cv.pdf — preview</div>
+      <div style="width: 56px;"></div>
+    </div>
+    <div class="window-body">
+      <div class="panel">
+        <div class="meta-line mono">/document — pdf</div>
+        <h2 class="display-h" style="font-size: 1.6rem;">CV — Amine Assoussi</h2>
+        <p class="body-text" style="font-size: .85rem;">Single page, FR. Last updated April 2026.</p>
+        <a href="CV_Amine_Assoussi.pdf" target="_blank" class="send-btn" style="display: inline-block; text-decoration: none; text-align: center; width: auto; padding: 10px 20px;">→ open pdf</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="dock">
+    <div class="dock-item" data-open="readme"><span class="dock-tooltip">readme</span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color: var(--void);"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+    </div>
+    <div class="dock-item" data-open="about"><span class="dock-tooltip">about</span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color: var(--ink);"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v2"/></svg>
+    </div>
+    <div class="dock-item" data-open="skills"><span class="dock-tooltip">skills</span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color: var(--ink);"><path d="M14 4l7 7-7 7M3 11l7-7M3 11l7 7"/></svg>
+    </div>
+    <div class="dock-item" data-open="certs"><span class="dock-tooltip">certs</span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color: var(--ink);"><path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7-6.3-4.6L5.7 21 8 14l-6-4.6h7.6z"/></svg>
+    </div>
+    <div class="dock-item" data-open="projects"><span class="dock-tooltip">projects</span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color: var(--ink);"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+    </div>
+    <div class="dock-item" data-open="path"><span class="dock-tooltip">timeline</span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color: var(--ink);"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+    </div>
+    <div class="dock-divider"></div>
+    <div class="dock-item" data-open="cv"><span class="dock-tooltip">cv.pdf</span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color: var(--plasma);"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+    </div>
+    <div class="dock-item" data-open="contact"><span class="dock-tooltip">contact</span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color: var(--signal);"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+    </div>
+  </div>
+</div>
+
+<script>
+  const bootLogs = [
+    '[ boot ] initializing kernel...',
+    '[ boot ] mounting /home/amine...',
+    '[ boot ] loading certifications.db...',
+    '[ boot ] starting profile.service...',
+    '[ ok ] systemctl: motivation.service running',
+    '[ ok ] amine.OS ready'
+  ];
+  const bootEl = document.getElementById('boot-log');
+  let bIdx = 0;
+  const bootInterval = setInterval(() => {
+    bIdx++;
+    if (bIdx < bootLogs.length) bootEl.textContent = bootLogs[bIdx];
+    else clearInterval(bootInterval);
+  }, 380);
+
+  const boot = document.getElementById('boot');
+  function dismissBoot() {
+    boot.classList.add('done');
+    setTimeout(() => openWindow('readme'), 600);
+  }
+  setTimeout(() => {
+    document.addEventListener('keydown', dismissBoot, { once: true });
+    document.addEventListener('click', dismissBoot, { once: true });
+  }, 2700);
+
+  function pad(n) { return n.toString().padStart(2, '0'); }
+  function tickClock() {
+    const d = new Date();
+    document.getElementById('clock').textContent = pad(d.getHours()) + ':' + pad(d.getMinutes());
+  }
+  tickClock();
+  setInterval(tickClock, 30000);
+
+  const start = Date.now();
+  setInterval(() => {
+    const e = Math.floor((Date.now() - start) / 1000);
+    const h = pad(Math.floor(e / 3600));
+    const m = pad(Math.floor((e % 3600) / 60));
+    const s = pad(e % 60);
+    document.getElementById('uptime').textContent = h + ':' + m + ':' + s;
+    if (Math.random() > .5) {
+      const cpu = 32 + Math.floor(Math.random() * 18);
+      document.getElementById('cpu').textContent = cpu;
+      document.getElementById('cpu-bar').style.width = cpu + '%';
+    }
+  }, 1000);
+
+  const canvas = document.getElementById('net-canvas');
+  const ctx = canvas.getContext('2d');
+  let nodes = [];
+  let mouse = { x: -999, y: -999 };
+
+  function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+  window.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
+
+  class Node {
+    constructor() {
+      this.x = Math.random() * canvas.width;
+      this.y = Math.random() * canvas.height;
+      this.vx = (Math.random() - 0.5) * 0.25;
+      this.vy = (Math.random() - 0.5) * 0.25;
+      this.r = Math.random() * 1.4 + 0.4;
+      this.bright = Math.random();
+    }
+    update() {
+      this.x += this.vx; this.y += this.vy;
+      if (this.x < 0 || this.x > canvas.width) this.vx *= -1;
+      if (this.y < 0 || this.y > canvas.height) this.vy *= -1;
+      this.bright += (Math.random() - 0.5) * 0.02;
+      if (this.bright < 0.2) this.bright = 0.2;
+      if (this.bright > 1) this.bright = 1;
+    }
+    draw() {
+      ctx.fillStyle = `rgba(197, 232, 255, ${this.bright * 0.6})`;
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  for (let i = 0; i < 80; i++) nodes.push(new Node());
+
+  function drawLines() {
+    for (let i = 0; i < nodes.length; i++) {
+      for (let j = i + 1; j < nodes.length; j++) {
+        const dx = nodes[i].x - nodes[j].x;
+        const dy = nodes[i].y - nodes[j].y;
+        const d = Math.sqrt(dx*dx + dy*dy);
+        if (d < 130) {
+          const a = (1 - d / 130) * 0.18;
+          ctx.strokeStyle = `rgba(197, 232, 255, ${a})`;
+          ctx.lineWidth = 0.5;
+          ctx.beginPath();
+          ctx.moveTo(nodes[i].x, nodes[i].y);
+          ctx.lineTo(nodes[j].x, nodes[j].y);
+          ctx.stroke();
+        }
+      }
+    }
+    for (const n of nodes) {
+      const dx = n.x - mouse.x;
+      const dy = n.y - mouse.y;
+      const d = Math.sqrt(dx*dx + dy*dy);
+      if (d < 180) {
+        const a = (1 - d / 180) * 0.55;
+        ctx.strokeStyle = `rgba(255, 94, 58, ${a})`;
+        ctx.lineWidth = 0.8;
+        ctx.beginPath();
+        ctx.moveTo(n.x, n.y);
+        ctx.lineTo(mouse.x, mouse.y);
+        ctx.stroke();
+      }
+    }
+  }
+
+  function animate() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    nodes.forEach(n => { n.update(); n.draw(); });
+    drawLines();
+    requestAnimationFrame(animate);
+  }
+  animate();
+
+  let topZ = 100;
+  const windows = {
+    readme: { el: document.getElementById('win-readme'), open: false },
+    about: { el: document.getElementById('win-about'), open: false },
+    skills: { el: document.getElementById('win-skills'), open: false },
+    certs: { el: document.getElementById('win-certs'), open: false },
+    projects: { el: document.getElementById('win-projects'), open: false },
+    path: { el: document.getElementById('win-path'), open: false },
+    contact: { el: document.getElementById('win-contact'), open: false },
+    vault: { el: document.getElementById('win-vault'), open: false },
+    cv: { el: document.getElementById('win-cv'), open: false }
+  };
+
+  function focusWindow(id) {
+    Object.values(windows).forEach(w => w.el.classList.remove('focus-glow'));
+    windows[id].el.classList.add('focus-glow');
+    topZ++;
+    windows[id].el.style.zIndex = topZ;
+  }
+
+  function openWindow(id) {
+    const w = windows[id];
+    if (!w) return;
+    if (!w.open) {
+      const offset = (Object.values(windows).filter(x => x.open).length) * 26;
+      const baseTop = 70 + offset;
+      const baseLeft = (window.innerWidth / 2) - 290 + offset;
+      if (!w.el.dataset.placed) {
+        w.el.style.top = baseTop + 'px';
+        w.el.style.left = Math.max(20, baseLeft) + 'px';
+        w.el.dataset.placed = '1';
+      }
+      w.el.classList.add('open');
+      w.el.classList.remove('minimized');
+      w.open = true;
+      const dock = document.querySelector(`.dock-item[data-open="${id}"]`);
+      if (dock) dock.classList.add('active');
+    }
+    focusWindow(id);
+  }
+
+  function closeWindow(id) {
+    windows[id].el.classList.remove('open');
+    windows[id].open = false;
+    const dock = document.querySelector(`.dock-item[data-open="${id}"]`);
+    if (dock) dock.classList.remove('active');
+  }
+
+  function minimizeWindow(id) {
+    windows[id].el.classList.add('minimized');
+    setTimeout(() => {
+      windows[id].el.classList.remove('open');
+      windows[id].el.classList.remove('minimized');
+      windows[id].open = false;
+      const dock = document.querySelector(`.dock-item[data-open="${id}"]`);
+      if (dock) dock.classList.remove('active');
+    }, 300);
+  }
+
+  function maximizeWindow(id) {
+    const w = windows[id].el;
+    if (w.dataset.maxed === '1') {
+      w.style.top = w.dataset.prevTop;
+      w.style.left = w.dataset.prevLeft;
+      w.style.width = w.dataset.prevW;
+      w.style.height = w.dataset.prevH;
+      w.dataset.maxed = '0';
+    } else {
+      w.dataset.prevTop = w.style.top;
+      w.dataset.prevLeft = w.style.left;
+      w.dataset.prevW = w.style.width;
+      w.dataset.prevH = w.style.height;
+      w.style.top = '40px';
+      w.style.left = '20px';
+      w.style.width = (window.innerWidth - 40) + 'px';
+      w.style.height = (window.innerHeight - 110) + 'px';
+      w.dataset.maxed = '1';
+    }
+  }
+
+  document.querySelectorAll('[data-open]').forEach(el => {
+    el.addEventListener('click', e => {
+      e.stopPropagation();
+      openWindow(el.dataset.open);
+    });
+  });
+
+  Object.entries(windows).forEach(([id, w]) => {
+    w.el.querySelector('[data-close]').addEventListener('click', e => { e.stopPropagation(); closeWindow(id); });
+    w.el.querySelector('[data-min]').addEventListener('click', e => { e.stopPropagation(); minimizeWindow(id); });
+    w.el.querySelector('[data-max]').addEventListener('click', e => { e.stopPropagation(); maximizeWindow(id); });
+    w.el.addEventListener('mousedown', () => focusWindow(id));
+  });
+
+  document.querySelectorAll('[data-drag]').forEach(bar => {
+    let dragging = false, sx = 0, sy = 0, ox = 0, oy = 0;
+    const win = bar.closest('.window');
+    bar.addEventListener('mousedown', e => {
+      if (e.target.classList.contains('wc')) return;
+      dragging = true;
+      const rect = win.getBoundingClientRect();
+      sx = e.clientX; sy = e.clientY;
+      ox = rect.left; oy = rect.top;
+      win.style.transform = 'none';
+      bar.style.cursor = 'grabbing';
+    });
+    document.addEventListener('mousemove', e => {
+      if (!dragging) return;
+      const dx = e.clientX - sx;
+      const dy = e.clientY - sy;
+      win.style.left = (ox + dx) + 'px';
+      win.style.top = Math.max(35, oy + dy) + 'px';
+    });
+    document.addEventListener('mouseup', () => {
+      dragging = false;
+      bar.style.cursor = 'grab';
+    });
+  });
+
+  document.getElementById('contact-form').addEventListener('submit', e => {
+    e.preventDefault();
+    const name = document.getElementById('f-name').value.trim();
+    const email = document.getElementById('f-email').value.trim();
+    const msg = document.getElementById('f-msg').value.trim();
+    const body = `${msg}\n\n— ${name}\n${email}`;
+    window.location.href = `mailto:amineassoussipro@gmail.com?subject=${encodeURIComponent('Portfolio · ' + name)}&body=${encodeURIComponent(body)}`;
+  });
+
+  const konami = ['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','b','a'];
+  let kIdx = 0;
+  document.addEventListener('keydown', e => {
+    if (boot.classList.contains('done') === false) return;
+    if (e.key === konami[kIdx]) {
+      kIdx++;
+      if (kIdx === konami.length) {
+        openWindow('vault');
+        const out = document.getElementById('vault-output');
+        out.innerHTML = '';
+        const lines = [
+          '> access granted',
+          '> decrypting...',
+          '> "the only way to do great work is to love what you do."',
+          '> — steve jobs',
+          '> ',
+          '> p.s. you are now an honorary sysadmin of amine.OS'
+        ];
+        let i = 0;
+        const interval = setInterval(() => {
+          if (i >= lines.length) { clearInterval(interval); return; }
+          const div = document.createElement('div');
+          div.textContent = lines[i];
+          div.style.color = i < 2 ? 'var(--signal)' : i < 4 ? 'var(--ink)' : 'var(--ink-3)';
+          out.appendChild(div);
+          i++;
+        }, 250);
+        kIdx = 0;
+      }
+    } else if (!konami.slice(0, kIdx).includes(e.key)) {
+      kIdx = 0;
+    }
+  });
+</script>
+
+</body>
+</html>
