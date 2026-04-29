@@ -1113,9 +1113,7 @@
   // ============ CV DOWNLOAD ============
   document.getElementById('cv-download').addEventListener('click', e => {
     e.preventDefault();
-    alert(currentLang === 'fr'
-      ? "Place ton CV (CV_Amine_Assoussi.pdf) dans le même dossier que index.html, puis remplace ce script par : window.open('CV_Amine_Assoussi.pdf', '_blank');"
-      : "Place your CV (CV_Amine_Assoussi.pdf) in the same folder as index.html, then replace this script with: window.open('CV_Amine_Assoussi.pdf', '_blank');");
+    window.open('CV_Amine_Assoussi.pdf', '_blank');
   });
 </script>
 
